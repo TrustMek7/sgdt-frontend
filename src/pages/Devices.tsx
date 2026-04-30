@@ -1,13 +1,39 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { mockDevices, mockDeviceTypes, mockOffices } from '../lib/mockData';
+import { mockDeviceTypes, mockOffices } from '../lib/mockData';
 import { Device } from '../lib/types';
+import { api } from '../lib/api';
 
 export function Devices() {
-  const [devices, setDevices] = useState<Device[]>(mockDevices);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const limit = 10;
+
+  useEffect(() => {
+    fetchDevices(page);
+  }, [page]);
+
+  const fetchDevices = async (currentPage: number) => {
+    try {
+      setLoading(true);
+      const res = await api.get(`/devices?page=${currentPage}&limit=${limit}`);
+      setDevices(res.data.data);
+      setTotalCount(res.data.totalCount);
+    } catch (error) {
+      console.error('Error loading devices', error);
+      toast.error('Error al cargar dispositivos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(totalCount / limit);
+
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -256,6 +282,25 @@ export function Devices() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Controles de paginación */}
+      <div className="flex justify-between items-center mt-4">
+        <button 
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1 || loading}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Anterior
+        </button>
+        <span className="text-gray-600">Página {page} de {totalPages || 1}</span>
+        <button 
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          disabled={page >= totalPages || loading}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          Siguiente
+        </button>
       </div>
 
       {/* Modal para crear/editar */}
