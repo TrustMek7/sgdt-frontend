@@ -9,17 +9,20 @@ import {
 import { Badge } from '../components/Badge';
 
 export function Reports() {
-  const [areaFilter, setAreaFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
+  const [officeFilter, setOfficeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [showPreview, setShowPreview] = useState(false);
 
   const allFloors = Array.from(new Set(mockOffices.map((o) => o.floor))).sort();
+  const filteredOfficesForSelect = floorFilter 
+    ? mockOffices.filter(o => o.floor.toString() === floorFilter)
+    : mockOffices;
 
   // Generate report data grouped by office then device type
   const reportData = mockOffices
-    .filter((o) => (areaFilter ? o.areaId === areaFilter : true))
     .filter((o) => (floorFilter ? o.floor.toString() === floorFilter : true))
+    .filter((o) => (officeFilter ? o.id === officeFilter : true))
     .map((office) => {
       const officeDevices = mockDevices.filter(
         (d) =>
@@ -60,23 +63,6 @@ export function Reports() {
           Configuración del Reporte
         </h2>
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Área
-            </label>
-            <select
-              className="input-field"
-              value={areaFilter}
-              onChange={(e) => setAreaFilter(e.target.value)}
-            >
-              <option value="">Todas las áreas</option>
-              {mockAreas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="w-32">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Piso
@@ -84,12 +70,33 @@ export function Reports() {
             <select
               className="input-field"
               value={floorFilter}
-              onChange={(e) => setFloorFilter(e.target.value)}
+              onChange={(e) => {
+                setFloorFilter(e.target.value);
+                setOfficeFilter(''); // Reset office filter when floor changes
+              }}
             >
               <option value="">Todos</option>
               {allFloors.map((f) => (
                 <option key={f} value={f}>
                   Piso {f}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Oficina
+            </label>
+            <select
+              className="input-field"
+              value={officeFilter}
+              onChange={(e) => setOfficeFilter(e.target.value)}
+              disabled={!floorFilter && filteredOfficesForSelect.length > 20} // Optionally disabled if too many, but fine to leave enabled
+            >
+              <option value="">Todas las oficinas {floorFilter ? `del Piso ${floorFilter}` : ''}</option>
+              {filteredOfficesForSelect.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
                 </option>
               ))}
             </select>
@@ -160,54 +167,53 @@ export function Reports() {
                         {office.name} (Piso {office.floor})
                       </h3>
 
-                      {groups.map(({ type, devices }) => (
-                        <div key={type.id} className="ml-4 space-y-2">
-                          <h4 className="font-semibold text-gray-700 flex items-center gap-2">
-                            {type.planCode} - {type.description}
-                            <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                              {devices.length} artículos
-                            </span>
-                          </h4>
-                          <table className="w-full text-sm text-left border border-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-2 border-b border-gray-200 w-1/3">
-                                  Código Inventario
-                                </th>
-                                <th className="px-4 py-2 border-b border-gray-200 w-1/3">
-                                  Estado
-                                </th>
-                                <th className="px-4 py-2 border-b border-gray-200 w-1/3">
-                                  Origen
-                                </th>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse border border-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 border border-gray-200 font-semibold w-20 text-center">CANTIDAD</th>
+                              <th className="px-4 py-3 border border-gray-200 font-semibold w-32 text-center">CÓDIGO PLANO</th>
+                              <th className="px-4 py-3 border border-gray-200 font-semibold w-1/4">DESCRIPCIÓN</th>
+                              <th className="px-4 py-3 border border-gray-200 font-semibold">CARACTERÍSTICAS</th>
+                              <th className="px-4 py-3 border border-gray-200 font-semibold w-1/5">MARCA / MODELO</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groups.map(({ type, devices }) => (
+                              <tr key={type.id} className="border-b border-gray-200 last:border-0 hover:bg-gray-50/50">
+                                <td className="px-4 py-3 border border-gray-200 text-center font-bold text-gray-700">
+                                  {devices.length}
+                                </td>
+                                <td className="px-4 py-3 border border-gray-200 text-center font-medium text-blue-600">
+                                  {type.planCode}
+                                </td>
+                                <td className="px-4 py-3 border border-gray-200 font-medium">
+                                  {type.description}
+                                </td>
+                                <td className="px-4 py-3 border border-gray-200">
+                                  <div className="whitespace-pre-wrap text-xs text-gray-600 leading-relaxed">
+                                    {type.characteristics}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 border border-gray-200">
+                                  <div className="flex flex-col items-center justify-center gap-2">
+                                    {type.imageUrl && (
+                                      <img 
+                                        src={type.imageUrl} 
+                                        alt={type.brandModel} 
+                                        className="w-16 h-16 object-contain rounded-md border border-gray-100 bg-white p-1"
+                                      />
+                                    )}
+                                    <span className="text-center font-medium text-sm">
+                                      {type.brandModel}
+                                    </span>
+                                  </div>
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {devices.map((device) => {
-                                const origin = mockOffices.find(
-                                  (o) => o.id === device.originOfficeId
-                                );
-                                return (
-                                  <tr
-                                    key={device.id}
-                                    className="border-b border-gray-100 last:border-0"
-                                  >
-                                    <td className="px-4 py-2 font-medium">
-                                      {device.inventoryCode || 'S/C'}
-                                    </td>
-                                    <td className="px-4 py-2">
-                                      <Badge status={device.status} />
-                                    </td>
-                                    <td className="px-4 py-2 text-gray-500">
-                                      {origin?.name || '-'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ))}
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   ))}
                 </div>
