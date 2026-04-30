@@ -10,6 +10,8 @@ import {
   LogOut } from
 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
+
 const navItems = [
 {
   path: '/',
@@ -44,10 +46,14 @@ const navItems = [
 
 export function Sidebar() {
   const navigate = useNavigate();
+  const { logout, user } = useAuth();
+
   const handleLogout = () => {
-    toast.success('Logged out successfully');
-    navigate('/');
+    logout();
+    toast.success('Sesión cerrada');
+    navigate('/login', { replace: true });
   };
+
   return (
     <div className="w-64 bg-sidebar h-screen flex flex-col text-white fixed left-0 top-0">
       <div className="p-6 flex items-center gap-3 border-b border-white/10">
@@ -56,6 +62,13 @@ export function Sidebar() {
         </div>
         <span className="font-bold text-xl tracking-wide">SGDT</span>
       </div>
+
+      {user && (
+        <div className="px-6 py-4 border-b border-white/10 text-sm">
+          <div className="text-gray-300">Conectado como</div>
+          <div className="font-semibold text-white">{user.username}</div>
+        </div>
+      )}
 
       <nav className="flex-1 py-6 px-3 space-y-1">
         {navItems.map((item) =>

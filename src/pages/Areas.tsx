@@ -1,195 +1,233 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '../components/Modal';
 import { mockAreas } from '../lib/mockData';
 import { Area } from '../lib/types';
+
 export function Areas() {
   const [areas, setAreas] = useState<Area[]>(mockAreas);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentArea, setCurrentArea] = useState<Area | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [editingArea, setEditingArea] = useState<Area | null>(null);
+  const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const handleOpenModal = (area?: Area) => {
-    if (area) {
-      setCurrentArea(area);
-      setName(area.name);
-    } else {
-      setCurrentArea(null);
-      setName('');
-    }
+
+  const resetForm = () => {
+    setName('');
+    setError('');
+    setEditingArea(null);
+  };
+
+  const openNewArea = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const openEditArea = (area: Area) => {
+    setEditingArea(area);
+    setName(area.name);
     setError('');
     setIsModalOpen(true);
   };
+
   const handleSave = () => {
     if (!name.trim()) {
-      setError('Name is required');
+      setError('El nombre es requerido');
       return;
     }
-    if (currentArea) {
+
+    if (editingArea) {
       setAreas(
         areas.map((a) =>
-        a.id === currentArea.id ?
-        {
-          ...a,
-          name
-        } :
-        a
+          a.id === editingArea.id ? { ...a, name } : a
         )
       );
-      toast.success('Area updated successfully');
+      toast.success('Área actualizada');
     } else {
       setAreas([
-      ...areas,
-      {
-        id: `a${Date.now()}`,
-        name,
-        officeCount: 0
-      }]
-      );
-      toast.success('Area created successfully');
+        ...areas,
+        {
+          id: `a${Date.now()}`,
+          name,
+          officeCount: 0
+        }
+      ]);
+      toast.success('Área creada');
     }
+
     setIsModalOpen(false);
+    resetForm();
   };
+
   const handleDeleteClick = (area: Area) => {
-    setCurrentArea(area);
-    setIsDeleteModalOpen(true);
+    setAreaToDelete(area);
+    setIsDeleteConfirmOpen(true);
   };
-  const confirmDelete = () => {
-    if (currentArea?.officeCount && currentArea.officeCount > 0) {
-      toast.error('Cannot delete area with assigned offices');
-      setIsDeleteModalOpen(false);
-      return;
+
+  const handleDeleteConfirm = () => {
+    if (areaToDelete) {
+      if (areaToDelete.officeCount && areaToDelete.officeCount > 0) {
+        toast.error('No se puede eliminar un área con oficinas asignadas');
+        setIsDeleteConfirmOpen(false);
+        return;
+      }
+      setAreas(areas.filter((a) => a.id !== areaToDelete.id));
+      toast.success('Área eliminada');
+      setIsDeleteConfirmOpen(false);
+      setAreaToDelete(null);
     }
-    setAreas(areas.filter((a) => a.id !== currentArea?.id));
-    toast.success('Area deleted successfully');
-    setIsDeleteModalOpen(false);
   };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Areas</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Áreas</h1>
         <button
-          onClick={() => handleOpenModal()}
-          className="btn-primary flex items-center gap-2">
-          
-          <Plus className="w-4 h-4" /> New Area
+          onClick={openNewArea}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Nueva Área
         </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 font-medium">Name</th>
-              <th className="px-6 py-3 font-medium">Number of Offices</th>
-              <th className="px-6 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {areas.map((area) =>
-            <tr key={area.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 font-medium text-gray-900">
-                  {area.name}
-                </td>
-                <td className="px-6 py-4">{area.officeCount}</td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <button
-                  onClick={() => handleOpenModal(area)}
-                  className="p-1.5 text-gray-500 hover:text-accent hover:bg-blue-50 rounded-md transition-colors">
-                  
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                  onClick={() => handleDeleteClick(area)}
-                  className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
-                  
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 font-medium">Nombre</th>
+                <th className="px-6 py-3 font-medium">Cantidad de Oficinas</th>
+                <th className="px-6 py-3 font-medium text-center">Acciones</th>
               </tr>
-            )}
-            {areas.length === 0 &&
-            <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
-                  No areas found.
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {areas.map((area) => (
+                <tr key={area.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 font-medium text-gray-900">
+                    {area.name}
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{area.officeCount}</td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => openEditArea(area)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Editar"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(area)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {areas.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                    No se encontraron áreas
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
+      {/* Modal para crear/editar */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={currentArea ? 'Edit Area' : 'New Area'}>
-        
+        onClose={() => {
+          setIsModalOpen(false);
+          resetForm();
+        }}
+        title={editingArea ? 'Editar Área' : 'Nueva Área'}
+      >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Name
+              Nombre *
             </label>
             <input
               type="text"
-              className={`input-field ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 setError('');
               }}
-              placeholder="e.g. Recursos Humanos" />
-            
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+              placeholder="Ej: Recursos Humanos"
+              className={`input-field ${error ? 'border-red-500' : ''}`}
+            />
+            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
           </div>
-          <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+
+          <div className="flex gap-3 pt-4">
             <button
-              className="btn-secondary"
-              onClick={() => setIsModalOpen(false)}>
-              
-              Cancel
+              onClick={handleSave}
+              className="flex-1 bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 transition"
+            >
+              {editingArea ? 'Actualizar' : 'Crear'}
             </button>
-            <button className="btn-primary" onClick={handleSave}>
-              Save Area
+            <button
+              onClick={() => {
+                setIsModalOpen(false);
+                resetForm();
+              }}
+              className="flex-1 border border-gray-300 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancelar
             </button>
           </div>
         </div>
       </Modal>
 
+      {/* Modal de confirmación de eliminación */}
       <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Confirm Deletion">
-        
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Confirmar Eliminación"
+      >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Are you sure you want to delete the area{' '}
-            <strong>{currentArea?.name}</strong>?
-          </p>
-          {currentArea?.officeCount ?
-          <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
-              Warning: This area has {currentArea.officeCount} assigned offices.
-              You cannot delete it until all offices are reassigned or deleted.
-            </div> :
-          null}
-          <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-100">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-900">¿Eliminar área?</p>
+              {areaToDelete && (
+                <p className="text-sm text-red-700 mt-1">{areaToDelete.name}</p>
+              )}
+              {areaToDelete?.officeCount && areaToDelete.officeCount > 0 && (
+                <p className="text-sm text-red-700 mt-2">
+                  ⚠️ Esta área tiene {areaToDelete.officeCount} oficina(s) asignada(s). No se puede eliminar.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
             <button
-              className="btn-secondary"
-              onClick={() => setIsDeleteModalOpen(false)}>
-              
-              Cancel
+              onClick={handleDeleteConfirm}
+              disabled={areaToDelete?.officeCount && areaToDelete.officeCount > 0}
+              className="flex-1 bg-red-600 text-white font-medium py-2 rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Eliminar
             </button>
             <button
-              className="btn-danger"
-              onClick={confirmDelete}
-              disabled={!!currentArea?.officeCount}>
-              
-              Delete Area
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="flex-1 border border-gray-300 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancelar
             </button>
           </div>
         </div>
       </Modal>
-    </div>);
+    </div>
+  );
 
 }
