@@ -1,0 +1,86 @@
+import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  MonitorSmartphone,
+  Building2,
+  Map,
+  Tags,
+  FileBarChart,
+  LogOut } from
+'lucide-react';
+import { toast } from 'sonner';
+const navItems = [
+{
+  path: '/',
+  label: 'Dashboard',
+  icon: LayoutDashboard
+},
+{
+  path: '/devices',
+  label: 'Devices',
+  icon: MonitorSmartphone
+},
+{
+  path: '/offices',
+  label: 'Offices',
+  icon: Building2
+},
+{
+  path: '/areas',
+  label: 'Areas',
+  icon: Map
+},
+{
+  path: '/types',
+  label: 'Types (Leyenda)',
+  icon: Tags
+},
+{
+  path: '/reports',
+  label: 'Reports',
+  icon: FileBarChart
+}];
+
+export function Sidebar() {
+  const navigate = useNavigate();
+  const handleLogout = () => {
+    toast.success('Logged out successfully');
+    navigate('/');
+  };
+  return (
+    <div className="w-64 bg-sidebar h-screen flex flex-col text-white fixed left-0 top-0">
+      <div className="p-6 flex items-center gap-3 border-b border-white/10">
+        <div className="w-8 h-8 bg-accent rounded-md flex items-center justify-center font-bold text-lg">
+          S
+        </div>
+        <span className="font-bold text-xl tracking-wide">SGDT</span>
+      </div>
+
+      <nav className="flex-1 py-6 px-3 space-y-1">
+        {navItems.map((item) =>
+        <NavLink
+          key={item.path}
+          to={item.path}
+          className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${isActive ? 'bg-accent text-white font-medium' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`
+          }>
+          
+            <item.icon className="w-5 h-5" />
+            {item.label}
+          </NavLink>
+        )}
+      </nav>
+
+      <div className="p-4 border-t border-white/10">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-md text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+          
+          <LogOut className="w-5 h-5" />
+          Logout
+        </button>
+      </div>
+    </div>);
+
+}
