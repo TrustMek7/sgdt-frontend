@@ -20,6 +20,14 @@ export function Offices() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const allFloors = Array.from(new Set(mockOffices.map((o) => o.floor))).sort();
+
+  const availableAreaIds = floorFilter 
+    ? new Set(mockOffices.filter(o => o.floor.toString() === floorFilter).map(o => o.areaId))
+    : new Set(mockAreas.map(a => a.id));
+
+  const filteredAreasForSelect = mockAreas.filter(a => availableAreaIds.has(a.id));
+
   const filteredOffices = useMemo(() => {
     return offices.filter((office) => {
       const matchesArea = areaFilter ? office.areaId === areaFilter : true;
@@ -27,8 +35,6 @@ export function Offices() {
       return matchesArea && matchesFloor;
     });
   }, [offices, areaFilter, floorFilter]);
-
-  const allFloors = Array.from(new Set(offices.map((o) => o.floor))).sort();
 
   const resetForm = () => {
     setFormData({ name: '', floor: '', areaId: '' });
@@ -132,26 +138,29 @@ export function Offices() {
 
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
         <select
-          className="input-field w-48"
-          value={areaFilter}
-          onChange={(e) => setAreaFilter(e.target.value)}
-        >
-          <option value="">Todas las áreas</option>
-          {mockAreas.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-        <select
           className="input-field w-32"
           value={floorFilter}
-          onChange={(e) => setFloorFilter(e.target.value)}
+          onChange={(e) => {
+            setFloorFilter(e.target.value);
+            setAreaFilter('');
+          }}
         >
           <option value="">Todos los pisos</option>
           {allFloors.map((f) => (
             <option key={f} value={f}>
               Piso {f}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input-field w-48"
+          value={areaFilter}
+          onChange={(e) => setAreaFilter(e.target.value)}
+        >
+          <option value="">Todas las áreas</option>
+          {filteredAreasForSelect.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
             </option>
           ))}
         </select>

@@ -81,11 +81,11 @@ export function DeviceTypes() {
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 font-medium">Imagen</th>
                 <th className="px-6 py-3 font-medium">Código Plan</th>
                 <th className="px-6 py-3 font-medium">Descripción</th>
                 <th className="px-6 py-3 font-medium">Características</th>
                 <th className="px-6 py-3 font-medium">Marca-Modelo</th>
+                <th className="px-6 py-3 font-medium text-center">Imagen</th>
                 <th className="px-6 py-3 font-medium text-center">Acciones</th>
               </tr>
             </thead>
@@ -94,11 +94,6 @@ export function DeviceTypes() {
                 const status = getBadgeStatus(type.planCode);
                 return (
                   <tr key={type.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200">
-                        <ImageIcon className="w-5 h-5" />
-                      </div>
-                    </td>
                     <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-blue-600">{type.planCode}</span>
@@ -112,6 +107,11 @@ export function DeviceTypes() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{type.brandModel}</td>
+                    <td className="px-6 py-4 flex justify-center">
+                      <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
                         <button

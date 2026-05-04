@@ -21,13 +21,19 @@ export function Devices() {
   const fetchDevices = async (currentPage: number) => {
     try {
       setLoading(true);
-      const res = await api.get(`/devices?page=${currentPage}&limit=${limit}`);
-      setDevices(res.data.data);
-      setTotalCount(res.data.totalCount);
+      // Temporarily use mockData until backend is integrated
+      // const res = await api.get(`/devices?page=${currentPage}&limit=${limit}`);
+      // setDevices(res.data.data);
+      // setTotalCount(res.data.totalCount);
+      setTimeout(() => {
+        const startIndex = (currentPage - 1) * limit;
+        setDevices(mockDevices.slice(startIndex, startIndex + limit));
+        setTotalCount(mockDevices.length);
+        setLoading(false);
+      }, 500);
     } catch (error) {
       console.error('Error loading devices', error);
       toast.error('Error al cargar dispositivos');
-    } finally {
       setLoading(false);
     }
   };
@@ -35,14 +41,22 @@ export function Devices() {
   const totalPages = Math.ceil(totalCount / limit);
 
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
+
+  // Filter device types based on status filter
+  const filteredDeviceTypesSearch = useMemo(() => {
+    if (!statusFilter) return mockDeviceTypes;
+    if (statusFilter === 'New') return mockDeviceTypes.filter(t => !t.planCode.startsWith('Ex'));
+    return mockDeviceTypes.filter(t => t.planCode.startsWith('Ex'));
+  }, [statusFilter]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const [formData, setFormData] = useState({
+    status: '',
     typeId: '',
     inventoryCode: '',
     destinationOfficeId: '',
@@ -63,11 +77,18 @@ export function Devices() {
   }, [devices, search, typeFilter, statusFilter, floorFilter]);
 
   const selectedType = mockDeviceTypes.find((t) => t.id === formData.typeId);
-  const isTransfer = selectedType?.planCode.startsWith('Ex');
-  const isNew = selectedType?.planCode.startsWith('E') && !isTransfer;
+  const isTransfer = formData.status === 'Transfer';
+  const isNew = formData.status === 'New';
+
+  const filteredModalDeviceTypes = useMemo(() => {
+    if (!formData.status) return [];
+    if (formData.status === 'New') return mockDeviceTypes.filter(t => !t.planCode.startsWith('Ex'));
+    return mockDeviceTypes.filter(t => t.planCode.startsWith('Ex'));
+  }, [formData.status]);
 
   const resetForm = () => {
     setFormData({
+      status: '',
       typeId: '',
       inventoryCode: '',
       destinationOfficeId: '',
@@ -83,8 +104,11 @@ export function Devices() {
   };
 
   const openEditDevice = (device: Device) => {
+    const dType = mockDeviceTypes.find(t => t.id === device.typeId);
+    const dStatus = dType?.planCode.startsWith('Ex') ? 'Transfer' : 'New';
     setEditingDevice(device);
     setFormData({
+      status: dStatus,
       typeId: device.typeId,
       inventoryCode: device.inventoryCode,
       destinationOfficeId: device.destinationOfficeId,
@@ -184,25 +208,28 @@ export function Devices() {
           />
         </div>
         <select
+          className="input-field w-36"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setTypeFilter(''); // Reset type filter when status changes
+          }}
+        >
+          <option value="">Todos los estados</option>
+          <option value="New">Nuevo</option>
+          <option value="Transfer">Traslado</option>
+        </select>
+        <select
           className="input-field w-48"
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
         >
           <option value="">Todos los tipos</option>
-          {mockDeviceTypes.map((t) => (
+          {filteredDeviceTypesSearch.map((t) => (
             <option key={t.id} value={t.id}>
               {t.planCode} - {t.description}
             </option>
           ))}
-        </select>
-        <select
-          className="input-field w-36"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">Todos los estados</option>
-          <option value="New">Nuevo</option>
-          <option value="Transfer">Traslado</option>
         </select>
         <select
           className="input-field w-32"
@@ -315,6 +342,25 @@ export function Devices() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Estado *
+            </label>
+            <select
+              value={formData.status}
+              onChange={(e) => {
+                setFormData({ ...formData, status: e.target.value, typeId: '' });
+                setErrors({ ...errors, typeId: '' });
+              }}
+              className="input-field"
+              disabled={!!editingDevice} // Cannot change status of an existing device easily, or maybe they can? Let's leave it enabled if they want to change it. Actually better keep it enabled.
+            >
+              <option value="">Seleccionar estado...</option>
+              <option value="New">Nuevo</option>
+              <option value="Transfer">Traslado</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Tipo de Dispositivo *
             </label>
             <select
@@ -324,9 +370,10 @@ export function Devices() {
                 setErrors({ ...errors, typeId: '' });
               }}
               className={`input-field ${errors.typeId ? 'border-red-500' : ''}`}
+              disabled={!formData.status}
             >
               <option value="">Seleccionar tipo...</option>
-              {mockDeviceTypes.map((t) => (
+              {filteredModalDeviceTypes.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.planCode} - {t.description}
                 </option>
@@ -334,17 +381,6 @@ export function Devices() {
             </select>
             {errors.typeId && <p className="text-red-500 text-sm mt-1">{errors.typeId}</p>}
           </div>
-
-          {selectedType && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Estado (Auto-asignado)
-              </label>
-              <div className="py-2">
-                <Badge status={isTransfer ? 'Transfer' : 'New'} />
-              </div>
-            </div>
-          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
