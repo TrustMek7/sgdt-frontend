@@ -21,6 +21,7 @@ export interface DeviceType {
   characteristics: string;
   brandModel: string;
   imageUrl?: string;
+  isTransfer?: boolean;
 }
 
 export interface Device {
@@ -32,4 +33,26 @@ export interface Device {
   floor: number;
   destinationOfficeId: string;
   originOfficeId?: string;
+}
+
+export interface PaginatedDevicesResponse {
+  data: Device[];
+  totalCount: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface ReportSummary {
+  areas: Area[];
+  offices: Office[];
+  deviceTypes: DeviceType[];
+  devices: Device[];
+  totals: {
+    areas: number;
+    offices: number;
+    deviceTypes: number;
+    devices: number;
+    newDevices: number;
+    transferDevices: number;
+  };
 }

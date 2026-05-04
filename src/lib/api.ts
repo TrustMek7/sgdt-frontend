@@ -1,5 +1,5 @@
 ﻿import axios from 'axios';
-import { Area, Office, DeviceType, Device } from './types';
+import { Area, Office, DeviceType, Device, PaginatedDevicesResponse, ReportSummary } from './types';
 
 export const apiBaseUrl = 'http://localhost:3000/api';
 
@@ -16,6 +16,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface LoginResponse {
+  access_token: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    role: string;
+  };
+}
+
+export interface ProfileResponse {
+  user: {
+    userId: number;
+    email: string;
+  };
+}
+
+export const login = async (email: string, password: string) => (await api.post<LoginResponse>('/auth/login', { email, password })).data;
+export const getProfile = async () => (await api.post<ProfileResponse>('/auth/profile')).data;
+
 // Areas calls
 export const getAreas = async () => (await api.get<Area[]>('/areas')).data;
 export const createArea = async (data: Partial<Area>) => (await api.post<Area>('/areas', data)).data;
@@ -29,7 +49,7 @@ export const updateOffice = async (id: string, data: Partial<Office>) => (await 
 export const deleteOffice = async (id: string) => (await api.delete(`/offices/${id}`)).data;
 
 // Devices calls
-export const getDevicesList = async (page = 1, limit = 10) => (await api.get(`/devices?page=${page}&limit=${limit}`)).data;
+export const getDevicesList = async (page = 1, limit = 10) => (await api.get<PaginatedDevicesResponse>(`/devices?page=${page}&limit=${limit}`)).data;
 export const createDevice = async (data: Partial<Device>) => (await api.post<Device>('/devices', data)).data;
 export const updateDevice = async (id: string, data: Partial<Device>) => (await api.patch<Device>(`/devices/${id}`, data)).data;
 export const deleteDevice = async (id: string) => (await api.delete(`/devices/${id}`)).data;
@@ -37,3 +57,8 @@ export const deleteDevice = async (id: string) => (await api.delete(`/devices/${
 // Device Types calls
 export const getDeviceTypes = async () => (await api.get<DeviceType[]>('/device-types')).data;
 export const updateDeviceType = async (id: string, data: Partial<DeviceType>) => (await api.patch<DeviceType>(`/device-types/${id}`, data)).data;
+export const createDeviceType = async (data: Partial<DeviceType>) => (await api.post<DeviceType>('/device-types', data)).data;
+export const deleteDeviceType = async (id: string) => (await api.delete(`/device-types/${id}`)).data;
+
+// Reports
+export const getReportSummary = async () => (await api.get<ReportSummary>('/reports/summary')).data;

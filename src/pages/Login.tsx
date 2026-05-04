@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,19 +16,19 @@ export function Login() {
     e.preventDefault();
     setError('');
 
-    if (!username.trim() || !password.trim()) {
-      setError('Ingresa usuario y contraseña');
+    if (!email.trim() || !password.trim()) {
+      setError('Ingresa correo y contraseña');
       return;
     }
 
     setLoading(true);
     try {
-      const success = await login(username, password);
+      const success = await login(email, password);
       if (success) {
-        toast.success(`¡Bienvenido ${username}!`);
+        toast.success(`¡Bienvenido ${email}!`);
         navigate('/', { replace: true });
       } else {
-        setError('Usuario o contraseña incorrectos');
+        setError('Credenciales incorrectas');
         toast.error('Credenciales inválidas');
       }
     } catch (err) {
@@ -65,18 +65,18 @@ export function Login() {
 
             {/* Username Input */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Usuario
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Correo
               </label>
               <div className="relative">
                 <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
-                  placeholder="admin o usuario"
+                  placeholder="admin@sgdt.local"
                   className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:bg-gray-100"
                   autoFocus
                 />
@@ -106,8 +106,7 @@ export function Login() {
             <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700 border border-blue-200">
               <strong>Credenciales de prueba:</strong>
               <div className="mt-1 font-mono text-xs">
-                <div>admin / admin123</div>
-                <div>usuario / usuario123</div>
+                <div>admin@sgdt.local / Admin123!@#</div>
               </div>
             </div>
 

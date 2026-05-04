@@ -1,56 +1,29 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { mockDeviceTypes, mockOffices } from '../lib/mockData';
-import { Device } from '../lib/types';
-import { api } from '../lib/api';
+import { Device, DeviceType, Office } from '../lib/types';
+import { useDevices } from '../hooks/useDevices';
 
 export function Devices() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const limit = 10;
-
-  useEffect(() => {
-    fetchDevices(page);
-  }, [page]);
-
-  const fetchDevices = async (currentPage: number) => {
-    try {
-      setLoading(true);
-      // Temporarily use mockData until backend is integrated
-      // const res = await api.get(`/devices?page=${currentPage}&limit=${limit}`);
-      // setDevices(res.data.data);
-      // setTotalCount(res.data.totalCount);
-      setTimeout(() => {
-        const startIndex = (currentPage - 1) * limit;
-        setDevices(mockDevices.slice(startIndex, startIndex + limit));
-        setTotalCount(mockDevices.length);
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error('Error loading devices', error);
-      toast.error('Error al cargar dispositivos');
-      setLoading(false);
-    }
-  };
-
-  const totalPages = Math.ceil(totalCount / limit);
-
+  const {
+    devices,
+    deviceTypes,
+    offices,
+    page,
+    setPage,
+    totalPages,
+    loading,
+    catalogLoading,
+    createDevice,
+    updateDevice,
+    deleteDevice,
+  } = useDevices();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
-
-  // Filter device types based on status filter
-  const filteredDeviceTypesSearch = useMemo(() => {
-    if (!statusFilter) return mockDeviceTypes;
-    if (statusFilter === 'New') return mockDeviceTypes.filter(t => !t.planCode.startsWith('Ex'));
-    return mockDeviceTypes.filter(t => t.planCode.startsWith('Ex'));
-  }, [statusFilter]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
@@ -60,9 +33,15 @@ export function Devices() {
     typeId: '',
     inventoryCode: '',
     destinationOfficeId: '',
-    originOfficeId: ''
+    originOfficeId: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const filteredDeviceTypesSearch = useMemo(() => {
+    if (!statusFilter) return deviceTypes;
+    if (statusFilter === 'New') return deviceTypes.filter((type) => !type.planCode.startsWith('Ex'));
+    return deviceTypes.filter((type) => type.planCode.startsWith('Ex'));
+  }, [statusFilter, deviceTypes]);
 
   const filteredDevices = useMemo(() => {
     return devices.filter((device) => {
@@ -76,15 +55,16 @@ export function Devices() {
     });
   }, [devices, search, typeFilter, statusFilter, floorFilter]);
 
-  const selectedType = mockDeviceTypes.find((t) => t.id === formData.typeId);
+  const selectedType = deviceTypes.find((type) => type.id === formData.typeId);
   const isTransfer = formData.status === 'Transfer';
-  const isNew = formData.status === 'New';
 
   const filteredModalDeviceTypes = useMemo(() => {
     if (!formData.status) return [];
-    if (formData.status === 'New') return mockDeviceTypes.filter(t => !t.planCode.startsWith('Ex'));
-    return mockDeviceTypes.filter(t => t.planCode.startsWith('Ex'));
-  }, [formData.status]);
+    if (formData.status === 'New') return deviceTypes.filter((type) => !type.planCode.startsWith('Ex'));
+    return deviceTypes.filter((type) => type.planCode.startsWith('Ex'));
+  }, [formData.status, deviceTypes]);
+
+  const floors = Array.from(new Set(offices.map((office) => office.floor))).sort((a, b) => a - b);
 
   const resetForm = () => {
     setFormData({
@@ -92,7 +72,7 @@ export function Devices() {
       typeId: '',
       inventoryCode: '',
       destinationOfficeId: '',
-      originOfficeId: ''
+      originOfficeId: '',
     });
     setErrors({});
     setEditingDevice(null);
@@ -104,71 +84,57 @@ export function Devices() {
   };
 
   const openEditDevice = (device: Device) => {
-    const dType = mockDeviceTypes.find(t => t.id === device.typeId);
-    const dStatus = dType?.planCode.startsWith('Ex') ? 'Transfer' : 'New';
+    const deviceType = deviceTypes.find((type) => type.id === device.typeId);
+    const deviceStatus = deviceType?.planCode.startsWith('Ex') ? 'Transfer' : 'New';
     setEditingDevice(device);
     setFormData({
-      status: dStatus,
+      status: deviceStatus,
       typeId: device.typeId,
       inventoryCode: device.inventoryCode,
       destinationOfficeId: device.destinationOfficeId,
-      originOfficeId: device.originOfficeId || ''
+      originOfficeId: device.originOfficeId || '',
     });
+    setErrors({});
     setIsModalOpen(true);
   };
 
   const handleSave = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.status) newErrors.status = 'Estado es requerido';
     if (!formData.typeId) newErrors.typeId = 'Tipo es requerido';
-    if (!formData.destinationOfficeId)
-      newErrors.destinationOfficeId = 'Oficina destino es requerida';
-    if (isTransfer && !formData.originOfficeId)
-      newErrors.originOfficeId = 'Oficina origen es requerida para traslados';
+    if (!formData.destinationOfficeId) newErrors.destinationOfficeId = 'Oficina destino es requerida';
+    if (isTransfer && !formData.originOfficeId) newErrors.originOfficeId = 'Oficina origen es requerida para traslados';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    const destOffice = mockOffices.find((o) => o.id === formData.destinationOfficeId);
-
-    if (editingDevice) {
-      // Editar dispositivo existente
-      setDevices(
-        devices.map((d) =>
-          d.id === editingDevice.id
-            ? {
-                ...d,
-                inventoryCode: formData.inventoryCode,
-                typeId: formData.typeId,
-                planCode: selectedType!.planCode,
-                status: isTransfer ? 'Transfer' : 'New',
-                floor: destOffice?.floor || 1,
-                destinationOfficeId: formData.destinationOfficeId,
-                originOfficeId: isTransfer ? formData.originOfficeId : undefined
-              }
-            : d
-        )
-      );
-      toast.success('Dispositivo actualizado');
-    } else {
-      // Crear nuevo dispositivo
-      const newDevice: Device = {
-        id: `d${Date.now()}`,
-        inventoryCode: formData.inventoryCode,
-        planCode: selectedType!.planCode,
-        typeId: formData.typeId,
-        status: isTransfer ? 'Transfer' : 'New',
-        floor: destOffice?.floor || 1,
-        destinationOfficeId: formData.destinationOfficeId,
-        originOfficeId: isTransfer ? formData.originOfficeId : undefined
-      };
-      setDevices([newDevice, ...devices]);
-      toast.success('Dispositivo creado');
+    if (!selectedType) {
+      toast.error('Tipo de dispositivo inválido');
+      return;
     }
 
-    setIsModalOpen(false);
-    resetForm();
+    const payload = {
+      inventoryCode: formData.inventoryCode,
+      typeId: formData.typeId,
+      destinationOfficeId: formData.destinationOfficeId,
+      originOfficeId: isTransfer ? formData.originOfficeId : undefined,
+    };
+
+    const request = editingDevice ? updateDevice(editingDevice.id, payload) : createDevice(payload);
+
+    request
+      .then(() => {
+        toast.success(editingDevice ? 'Dispositivo actualizado' : 'Dispositivo creado');
+        setIsModalOpen(false);
+        resetForm();
+      })
+      .catch((error) => {
+        console.error('Error saving device', error);
+        toast.error('No se pudo guardar el dispositivo');
+      });
   };
 
   const handleDeleteClick = (device: Device) => {
@@ -177,15 +143,19 @@ export function Devices() {
   };
 
   const handleDeleteConfirm = () => {
-    if (deviceToDelete) {
-      setDevices(devices.filter((d) => d.id !== deviceToDelete.id));
-      toast.success('Dispositivo eliminado');
-      setIsDeleteConfirmOpen(false);
-      setDeviceToDelete(null);
-    }
-  };
+    if (!deviceToDelete) return;
 
-  const floors = Array.from(new Set(mockOffices.map((o) => o.floor))).sort();
+    deleteDevice(deviceToDelete.id)
+      .then(() => {
+        toast.success('Dispositivo eliminado');
+        setIsDeleteConfirmOpen(false);
+        setDeviceToDelete(null);
+      })
+      .catch((error) => {
+        console.error('Error deleting device', error);
+        toast.error('No se pudo eliminar el dispositivo');
+      });
+  };
 
   return (
     <div className="space-y-6">
@@ -212,7 +182,7 @@ export function Devices() {
           value={statusFilter}
           onChange={(e) => {
             setStatusFilter(e.target.value);
-            setTypeFilter(''); // Reset type filter when status changes
+            setTypeFilter('');
           }}
         >
           <option value="">Todos los estados</option>
@@ -225,9 +195,9 @@ export function Devices() {
           onChange={(e) => setTypeFilter(e.target.value)}
         >
           <option value="">Todos los tipos</option>
-          {filteredDeviceTypesSearch.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.planCode} - {t.description}
+          {filteredDeviceTypesSearch.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.planCode} - {type.description}
             </option>
           ))}
         </select>
@@ -237,9 +207,9 @@ export function Devices() {
           onChange={(e) => setFloorFilter(e.target.value)}
         >
           <option value="">Todos los pisos</option>
-          {floors.map((f) => (
-            <option key={f} value={f}>
-              Piso {f}
+          {floors.map((floor) => (
+            <option key={floor} value={floor}>
+              Piso {floor}
             </option>
           ))}
         </select>
@@ -262,22 +232,22 @@ export function Devices() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredDevices.map((device) => {
-                const type = mockDeviceTypes.find((t) => t.id === device.typeId);
-                const dest = mockOffices.find((o) => o.id === device.destinationOfficeId);
-                const orig = mockOffices.find((o) => o.id === device.originOfficeId);
+                const type = deviceTypes.find((item) => item.id === device.typeId);
+                const destination = offices.find((office) => office.id === device.destinationOfficeId);
+                const origin = offices.find((office) => office.id === device.originOfficeId);
                 return (
                   <tr key={device.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {device.inventoryCode || <span className="text-gray-400 italic">S/C</span>}
                     </td>
                     <td className="px-6 py-4 font-semibold text-blue-600">{device.planCode}</td>
-                    <td className="px-6 py-4 text-gray-700">{type?.description}</td>
+                    <td className="px-6 py-4 text-gray-700">{type?.description || '-'}</td>
                     <td className="px-6 py-4">
                       <Badge status={device.status} />
                     </td>
                     <td className="px-6 py-4">{device.floor}</td>
-                    <td className="px-6 py-4">{dest?.name}</td>
-                    <td className="px-6 py-4 text-gray-500">{orig?.name || '-'}</td>
+                    <td className="px-6 py-4">{destination?.name || '-'}</td>
+                    <td className="px-6 py-4 text-gray-500">{origin?.name || '-'}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
                         <button
@@ -299,10 +269,10 @@ export function Devices() {
                   </tr>
                 );
               })}
-              {filteredDevices.length === 0 && (
+              {!loading && filteredDevices.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                    No se encontraron dispositivos
+                    No hay datos registrados aún
                   </td>
                 </tr>
               )}
@@ -311,26 +281,26 @@ export function Devices() {
         </div>
       </div>
 
-      {/* Controles de paginación */}
       <div className="flex justify-between items-center mt-4">
-        <button 
-          onClick={() => setPage(p => Math.max(1, p - 1))}
-          disabled={page === 1 || loading}
+        <button
+          onClick={() => setPage((current) => Math.max(1, current - 1))}
+          disabled={page === 1 || loading || catalogLoading}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           Anterior
         </button>
-        <span className="text-gray-600">Página {page} de {totalPages || 1}</span>
-        <button 
-          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          disabled={page >= totalPages || loading}
+        <span className="text-gray-600">
+          Página {page} de {totalPages}
+        </span>
+        <button
+          onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          disabled={page >= totalPages || loading || catalogLoading}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           Siguiente
         </button>
       </div>
 
-      {/* Modal para crear/editar */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -341,28 +311,24 @@ export function Devices() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Estado *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
             <select
               value={formData.status}
               onChange={(e) => {
                 setFormData({ ...formData, status: e.target.value, typeId: '' });
-                setErrors({ ...errors, typeId: '' });
+                setErrors({ ...errors, status: '', typeId: '' });
               }}
-              className="input-field"
-              disabled={!!editingDevice} // Cannot change status of an existing device easily, or maybe they can? Let's leave it enabled if they want to change it. Actually better keep it enabled.
+              className={`input-field ${errors.status ? 'border-red-500' : ''}`}
             >
               <option value="">Seleccionar estado...</option>
               <option value="New">Nuevo</option>
               <option value="Transfer">Traslado</option>
             </select>
+            {errors.status && <p className="text-red-500 text-sm mt-1">{errors.status}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo de Dispositivo *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Dispositivo *</label>
             <select
               value={formData.typeId}
               onChange={(e) => {
@@ -373,9 +339,9 @@ export function Devices() {
               disabled={!formData.status}
             >
               <option value="">Seleccionar tipo...</option>
-              {filteredModalDeviceTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.planCode} - {t.description}
+              {filteredModalDeviceTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.planCode} - {type.description}
                 </option>
               ))}
             </select>
@@ -383,9 +349,7 @@ export function Devices() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Código de Inventario
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Código de Inventario</label>
             <input
               type="text"
               value={formData.inventoryCode}
@@ -397,9 +361,7 @@ export function Devices() {
 
           {isTransfer && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Oficina Origen *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Oficina Origen *</label>
               <select
                 value={formData.originOfficeId}
                 onChange={(e) => {
@@ -409,22 +371,18 @@ export function Devices() {
                 className={`input-field ${errors.originOfficeId ? 'border-red-500' : ''}`}
               >
                 <option value="">Seleccionar oficina...</option>
-                {mockOffices.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name} - Piso {o.floor}
+                {offices.map((office) => (
+                  <option key={office.id} value={office.id}>
+                    {office.name} - Piso {office.floor}
                   </option>
                 ))}
               </select>
-              {errors.originOfficeId && (
-                <p className="text-red-500 text-sm mt-1">{errors.originOfficeId}</p>
-              )}
+              {errors.originOfficeId && <p className="text-red-500 text-sm mt-1">{errors.originOfficeId}</p>}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Oficina Destino *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Oficina Destino *</label>
             <select
               value={formData.destinationOfficeId}
               onChange={(e) => {
@@ -434,15 +392,13 @@ export function Devices() {
               className={`input-field ${errors.destinationOfficeId ? 'border-red-500' : ''}`}
             >
               <option value="">Seleccionar oficina...</option>
-              {mockOffices.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} - Piso {o.floor}
+              {offices.map((office) => (
+                <option key={office.id} value={office.id}>
+                  {office.name} - Piso {office.floor}
                 </option>
               ))}
             </select>
-            {errors.destinationOfficeId && (
-              <p className="text-red-500 text-sm mt-1">{errors.destinationOfficeId}</p>
-            )}
+            {errors.destinationOfficeId && <p className="text-red-500 text-sm mt-1">{errors.destinationOfficeId}</p>}
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -465,7 +421,6 @@ export function Devices() {
         </div>
       </Modal>
 
-      {/* Modal de confirmación de eliminación */}
       <Modal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
@@ -478,8 +433,7 @@ export function Devices() {
               <p className="font-semibold text-red-900">¿Eliminar dispositivo?</p>
               {deviceToDelete && (
                 <p className="text-sm text-red-700 mt-1">
-                  {deviceToDelete.planCode} -{' '}
-                  {mockDeviceTypes.find((t) => t.id === deviceToDelete.typeId)?.description}
+                  {deviceToDelete.planCode} - {deviceTypes.find((type) => type.id === deviceToDelete.typeId)?.description}
                   {deviceToDelete.inventoryCode && ` (${deviceToDelete.inventoryCode})`}
                 </p>
               )}

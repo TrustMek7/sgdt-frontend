@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as authService from '../lib/auth';
+import { clearSession, getToken, setToken } from '../lib/auth';
+import { getProfile, login as apiLogin } from '../lib/api';
 
 interface User {
-  username: string;
+  id: number;
+  email: string;
+  name: string;
+  role: string;
 }
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => void;
 }
@@ -26,15 +30,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const checkAuth = () => {
-    const session = authService.getToken();
-    if (session) {
+  const checkAuth = async () => {
+    const token = getToken();
+    if (token) {
       try {
-        const data = JSON.parse(session);
+        const profile = await getProfile();
         setIsAuthenticated(true);
-        setUser({ username: data.username });
+        setUser({
+          id: profile.user.userId,
+          email: profile.user.email,
+          name: profile.user.email,
+          role: 'user',
+        });
       } catch {
-        authService.clearSession();
+        clearSession();
         setIsAuthenticated(false);
         setUser(null);
       }
@@ -45,24 +54,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   };
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
-      // Validación local sin API
-      if (authService.validateLocalCredentials(username, password)) {
-        authService.setSession(username);
-        setIsAuthenticated(true);
-        setUser({ username });
-        return true;
-      }
-      return false;
+      const response = await apiLogin(email, password);
+      setToken(response.access_token);
+      setIsAuthenticated(true);
+      setUser(response.user);
+      return true;
     } finally {
       setLoading(false);
     }
   };
 
   const logout = () => {
-    authService.clearSession();
+    clearSession();
     setIsAuthenticated(false);
     setUser(null);
   };
