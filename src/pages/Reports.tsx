@@ -93,9 +93,32 @@ export function Reports() {
     summaryTitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 5 },
     officeName: { fontSize: 13, fontWeight: 'bold', backgroundColor: '#eee', padding: 5, marginTop: 10, marginBottom: 10 },
     table: { width: '100%', border: '1pt solid #ccc', marginBottom: 15 },
-    tableRow: { flexDirection: 'row', borderBottom: '1pt solid #eee', minHeight: 30 },
-    th: { backgroundColor: '#fafafa', padding: 5, fontWeight: 'bold', borderRight: '1pt solid #eee' },
-    td: { padding: 5, borderRight: '1pt solid #eee' },
+    tableRow: { flexDirection: 'row', alignItems: 'stretch', borderBottom: '1pt solid #eee' },
+    tableHeaderRow: { backgroundColor: '#f0f0f0' },
+    cell: {
+      flexShrink: 1,
+      flexGrow: 0,
+      minWidth: 0,
+      paddingHorizontal: 5,
+      paddingVertical: 4,
+      borderRight: '1pt solid #eee',
+      justifyContent: 'flex-start',
+    },
+    cellText: {
+      fontSize: 9,
+      lineHeight: 1.25,
+      flexShrink: 1,
+      flexGrow: 1,
+      minWidth: 0,
+    },
+    headerText: {
+      fontWeight: 'bold',
+      fontSize: 9,
+      flexShrink: 1,
+      flexGrow: 1,
+      minWidth: 0,
+    },
+    centerCell: { justifyContent: 'center', alignItems: 'center' },
     colInv: { width: '15%' },
     colPlan: { width: '15%' },
     colDesc: { width: '20%' },
@@ -149,28 +172,54 @@ export function Reports() {
         )}
 
         {reportData.map(({ area, groups }) => (
-          <View key={area.id} wrap={false}>
+          <View key={area.id}>
             <Text style={pdfStyles.officeName}>{area.name}</Text>
             <View style={pdfStyles.table}>
-              <View style={[pdfStyles.tableRow, { backgroundColor: '#f0f0f0' }]}>
-                <Text style={[pdfStyles.th, pdfStyles.colInv]}>INVENTARIO</Text>
-                <Text style={[pdfStyles.th, pdfStyles.colPlan]}>PLAN</Text>
-                <Text style={[pdfStyles.th, pdfStyles.colDesc]}>DESCRIPCIÓN</Text>
-                <Text style={[pdfStyles.th, pdfStyles.colChar]}>CARACTERÍSTICAS</Text>
-                <Text style={[pdfStyles.th, pdfStyles.colBrand]}>MARCA / MODELO</Text>
-                <Text style={[pdfStyles.th, pdfStyles.colImg]}>IMAGEN</Text>
+              <View style={[pdfStyles.tableRow, pdfStyles.tableHeaderRow]}>
+                <View style={[pdfStyles.cell, pdfStyles.colInv]}>
+                  <Text style={pdfStyles.headerText}>INVENTARIO</Text>
+                </View>
+                <View style={[pdfStyles.cell, pdfStyles.colPlan]}>
+                  <Text style={pdfStyles.headerText}>PLAN</Text>
+                </View>
+                <View style={[pdfStyles.cell, pdfStyles.colDesc]}>
+                  <Text style={pdfStyles.headerText}>DESCRIPCIÓN</Text>
+                </View>
+                <View style={[pdfStyles.cell, pdfStyles.colChar]}>
+                  <Text style={pdfStyles.headerText}>CARACTERÍSTICAS</Text>
+                </View>
+                <View style={[pdfStyles.cell, pdfStyles.colBrand]}>
+                  <Text style={pdfStyles.headerText}>MARCA / MODELO</Text>
+                </View>
+                <View style={[pdfStyles.cell, pdfStyles.colImg, pdfStyles.centerCell]}>
+                  <Text style={pdfStyles.headerText}>IMAGEN</Text>
+                </View>
               </View>
 
               {groups.map(({ type, devices: groupDevices }) =>
                 groupDevices.map((device) => (
                   <View key={device.id} style={pdfStyles.tableRow}>
-                    <Text style={[pdfStyles.td, pdfStyles.colInv]}>{device.inventoryCode || 'S/C'}</Text>
-                    <Text style={[pdfStyles.td, pdfStyles.colPlan]}>{type.planCode}</Text>
-                    <Text style={[pdfStyles.td, pdfStyles.colDesc]}>{type.description}</Text>
-                    <Text style={[pdfStyles.td, pdfStyles.colChar]}>{type.characteristics}</Text>
-                    <Text style={[pdfStyles.td, pdfStyles.colBrand, { textAlign: 'center' }]}>{type.brandModel}</Text>
-                    <View style={[pdfStyles.td, pdfStyles.colImg, { justifyContent: 'center', alignItems: 'center' }]}>
-                      {type.imageUrl && <PDFImage src={type.imageUrl} style={{ width: 35, height: 35, alignSelf: 'center', marginBottom: 2 }} />}
+                    <View style={[pdfStyles.cell, pdfStyles.colInv]}>
+                      <Text style={pdfStyles.cellText}>{device.inventoryCode || 'S/C'}</Text>
+                    </View>
+                    <View style={[pdfStyles.cell, pdfStyles.colPlan]}>
+                      <Text style={pdfStyles.cellText}>{type.planCode}</Text>
+                    </View>
+                    <View style={[pdfStyles.cell, pdfStyles.colDesc]}>
+                      <Text style={pdfStyles.cellText}>{type.description}</Text>
+                    </View>
+                    <View style={[pdfStyles.cell, pdfStyles.colChar]}>
+                      <Text style={pdfStyles.cellText}>{type.characteristics}</Text>
+                    </View>
+                    <View style={[pdfStyles.cell, pdfStyles.colBrand]}>
+                      <Text style={[pdfStyles.cellText, { textAlign: 'center' }]}>{type.brandModel}</Text>
+                    </View>
+                    <View style={[pdfStyles.cell, pdfStyles.colImg, pdfStyles.centerCell]}>
+                      {type.imageUrl ? (
+                        <PDFImage src={type.imageUrl} style={{ width: 35, height: 35 }} />
+                      ) : (
+                        <Text style={pdfStyles.cellText}>-</Text>
+                      )}
                     </View>
                   </View>
                 ))
