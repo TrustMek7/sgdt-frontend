@@ -33,6 +33,31 @@ export interface Device {
   floor: number;
   destinationOfficeId: string;
   originOfficeId?: string;
+  originOfficeDescription?: string;
+}
+
+export interface DeviceCreatePayload {
+  inventoryCode?: string;
+  inventoryCodes?: string[];
+  typeId: string;
+  destinationOfficeId: string;
+  originOfficeId?: string;
+  originOfficeDescription?: string;
+  quantity?: number;
+}
+
+export interface DeviceCreateResponse {
+  message: string;
+  created: number;
+  devices: Device[];
+}
+
+export interface DeviceUpdatePayload {
+  inventoryCode?: string;
+  typeId?: string;
+  destinationOfficeId?: string;
+  originOfficeId?: string;
+  originOfficeDescription?: string;
 }
 
 export interface PaginatedDevicesResponse {
@@ -55,4 +80,20 @@ export interface ReportSummary {
     newDevices: number;
     transferDevices: number;
   };
+}
+
+export interface ReportBatchFilter {
+  floor?: number;
+  areaId?: string;
+  status?: 'Todos' | 'New' | 'Transfer';
+  title?: string;
+}
+
+export interface ReportBatchItem extends ReportSummary {
+  filter?: ReportBatchFilter;
+  title: string;
+}
+
+export interface ReportBatchResponse {
+  reports: ReportBatchItem[];
 }

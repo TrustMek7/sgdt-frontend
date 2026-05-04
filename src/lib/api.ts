@@ -1,5 +1,5 @@
 ﻿import axios from 'axios';
-import { Area, Office, DeviceType, Device, PaginatedDevicesResponse, ReportSummary } from './types';
+import { Area, Office, DeviceType, Device, DeviceCreatePayload, DeviceCreateResponse, DeviceUpdatePayload, PaginatedDevicesResponse, ReportBatchFilter, ReportBatchResponse, ReportSummary } from './types';
 
 export const apiBaseUrl = 'http://localhost:3000/api';
 
@@ -50,8 +50,8 @@ export const deleteOffice = async (id: string) => (await api.delete(`/offices/${
 
 // Devices calls
 export const getDevicesList = async (page = 1, limit = 10) => (await api.get<PaginatedDevicesResponse>(`/devices?page=${page}&limit=${limit}`)).data;
-export const createDevice = async (data: Partial<Device>) => (await api.post<Device>('/devices', data)).data;
-export const updateDevice = async (id: string, data: Partial<Device>) => (await api.patch<Device>(`/devices/${id}`, data)).data;
+export const createDevice = async (data: DeviceCreatePayload) => (await api.post<DeviceCreateResponse>('/devices', data)).data;
+export const updateDevice = async (id: string, data: DeviceUpdatePayload) => (await api.patch<Device>(`/devices/${id}`, data)).data;
 export const deleteDevice = async (id: string) => (await api.delete(`/devices/${id}`)).data;
 
 // Device Types calls
@@ -62,3 +62,4 @@ export const deleteDeviceType = async (id: string) => (await api.delete(`/device
 
 // Reports
 export const getReportSummary = async () => (await api.get<ReportSummary>('/reports/summary')).data;
+export const getReportBatch = async (reports: ReportBatchFilter[]) => (await api.post<ReportBatchResponse>('/reports/batch', { reports })).data;

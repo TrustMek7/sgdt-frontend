@@ -3,7 +3,7 @@ import { Plus, Search, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../components/Badge';
 import { Modal } from '../components/Modal';
-import { Device, DeviceType, Office } from '../lib/types';
+import { Device, DeviceCreatePayload, DeviceType, Office, DeviceUpdatePayload } from '../lib/types';
 import { useDevices } from '../hooks/useDevices';
 
 export function Devices() {
@@ -31,9 +31,10 @@ export function Devices() {
   const [formData, setFormData] = useState({
     status: '',
     typeId: '',
-    inventoryCode: '',
+    inventoryCodes: [''],
     destinationOfficeId: '',
-    originOfficeId: '',
+    originOfficeDescription: '',
+    quantity: 1,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -70,9 +71,10 @@ export function Devices() {
     setFormData({
       status: '',
       typeId: '',
-      inventoryCode: '',
+      inventoryCodes: [''],
       destinationOfficeId: '',
-      originOfficeId: '',
+      originOfficeDescription: '',
+      quantity: 1,
     });
     setErrors({});
     setEditingDevice(null);
@@ -90,9 +92,10 @@ export function Devices() {
     setFormData({
       status: deviceStatus,
       typeId: device.typeId,
-      inventoryCode: device.inventoryCode,
+      inventoryCodes: [device.inventoryCode],
       destinationOfficeId: device.destinationOfficeId,
-      originOfficeId: device.originOfficeId || '',
+      originOfficeDescription: device.originOfficeDescription || device.originOfficeId || '',
+      quantity: 1,
     });
     setErrors({});
     setIsModalOpen(true);
@@ -104,7 +107,23 @@ export function Devices() {
     if (!formData.status) newErrors.status = 'Estado es requerido';
     if (!formData.typeId) newErrors.typeId = 'Tipo es requerido';
     if (!formData.destinationOfficeId) newErrors.destinationOfficeId = 'Oficina destino es requerida';
-    if (isTransfer && !formData.originOfficeId) newErrors.originOfficeId = 'Oficina origen es requerida para traslados';
+    if (isTransfer && !formData.originOfficeDescription.trim()) newErrors.originOfficeDescription = 'Descripción de origen es requerida para traslados';
+    if (!editingDevice && (!Number.isInteger(Number(formData.quantity)) || Number(formData.quantity) < 1 || Number(formData.quantity) > 999)) {
+      newErrors.quantity = 'Cantidad válida entre 1 y 999 es requerida';
+    }
+
+    if (!editingDevice) {
+      const quantity = Number(formData.quantity || 1);
+      const normalizedCodes = formData.inventoryCodes.slice(0, quantity).map((code) => code.trim());
+
+      if (quantity > 1 && normalizedCodes.some((code) => !code)) {
+        newErrors.inventoryCodes = 'Completa el código de inventario de cada dispositivo';
+      }
+
+      if (quantity === 1 && !normalizedCodes[0]) {
+        newErrors.inventoryCodes = 'Código de inventario es requerido';
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -116,18 +135,38 @@ export function Devices() {
       return;
     }
 
-    const payload = {
-      inventoryCode: formData.inventoryCode,
+    const quantity = editingDevice ? 1 : Number(formData.quantity || 1);
+    const inventoryCodes = editingDevice
+      ? [formData.inventoryCodes[0]?.trim() || '']
+      : Array.from({ length: quantity }, (_, index) => (formData.inventoryCodes[index] || '').trim());
+
+    const createPayload: DeviceCreatePayload = {
+      inventoryCode: inventoryCodes[0],
+      inventoryCodes,
       typeId: formData.typeId,
       destinationOfficeId: formData.destinationOfficeId,
-      originOfficeId: isTransfer ? formData.originOfficeId : undefined,
+      originOfficeDescription: isTransfer ? formData.originOfficeDescription.trim() : undefined,
+      quantity,
+    };
+    const updatePayload: DeviceUpdatePayload = {
+      inventoryCode: inventoryCodes[0],
+      typeId: formData.typeId,
+      destinationOfficeId: formData.destinationOfficeId,
+      originOfficeDescription: isTransfer ? formData.originOfficeDescription.trim() : undefined,
     };
 
-    const request = editingDevice ? updateDevice(editingDevice.id, payload) : createDevice(payload);
+    const request = editingDevice ? updateDevice(editingDevice.id, updatePayload) : createDevice(createPayload);
 
     request
-      .then(() => {
-        toast.success(editingDevice ? 'Dispositivo actualizado' : 'Dispositivo creado');
+      .then((response) => {
+        const createdCount = response?.created || 1;
+        toast.success(
+          editingDevice
+            ? 'Dispositivo actualizado'
+            : createdCount > 1
+              ? `${createdCount} dispositivos creados`
+              : 'Dispositivo creado',
+        );
         setIsModalOpen(false);
         resetForm();
       })
@@ -247,7 +286,7 @@ export function Devices() {
                     </td>
                     <td className="px-6 py-4">{device.floor}</td>
                     <td className="px-6 py-4">{destination?.name || '-'}</td>
-                    <td className="px-6 py-4 text-gray-500">{origin?.name || '-'}</td>
+                    <td className="px-6 py-4 text-gray-500">{device.originOfficeDescription || origin?.name || '-'}</td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
                         <button
@@ -350,34 +389,62 @@ export function Devices() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Código de Inventario</label>
-            <input
-              type="text"
-              value={formData.inventoryCode}
-              onChange={(e) => setFormData({ ...formData, inventoryCode: e.target.value })}
-              placeholder="Ej: INV-2026-001"
-              className="input-field"
-            />
+            <div className="space-y-3">
+              {(editingDevice ? 1 : Math.max(1, Number(formData.quantity || 1))).toString() &&
+                Array.from({ length: editingDevice ? 1 : Math.max(1, Number(formData.quantity || 1)) }, (_, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    value={formData.inventoryCodes[index] || ''}
+                    onChange={(e) => {
+                      const nextCodes = [...formData.inventoryCodes];
+                      nextCodes[index] = e.target.value;
+                      setFormData({ ...formData, inventoryCodes: nextCodes });
+                      setErrors({ ...errors, inventoryCodes: '' });
+                    }}
+                    placeholder={editingDevice ? 'Ej: INV-2026-001' : `Código ${index + 1}`}
+                    className="input-field"
+                  />
+                ))}
+            </div>
+            {errors.inventoryCodes && <p className="text-red-500 text-sm mt-1">{errors.inventoryCodes}</p>}
           </div>
+
+          {!editingDevice && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
+              <input
+                type="number"
+                min="1"
+                max="999"
+                value={formData.quantity}
+                onChange={(e) => {
+                  const nextQuantity = Number(e.target.value);
+                  const nextCodes = Array.from({ length: Math.max(1, nextQuantity || 1) }, (_, index) => formData.inventoryCodes[index] || '');
+                  setFormData({ ...formData, quantity: nextQuantity, inventoryCodes: nextCodes });
+                  setErrors({ ...errors, quantity: '' });
+                }}
+                className={`input-field ${errors.quantity ? 'border-red-500' : ''}`}
+              />
+              <p className="text-xs text-gray-500 mt-1">Si ingresas más de 1, aparecerá un campo por cada dispositivo para que indiques un código independiente.</p>
+              {errors.quantity && <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>}
+            </div>
+          )}
 
           {isTransfer && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Oficina Origen *</label>
-              <select
-                value={formData.originOfficeId}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción de Origen *</label>
+              <textarea
+                value={formData.originOfficeDescription}
                 onChange={(e) => {
-                  setFormData({ ...formData, originOfficeId: e.target.value });
-                  setErrors({ ...errors, originOfficeId: '' });
+                  setFormData({ ...formData, originOfficeDescription: e.target.value });
+                  setErrors({ ...errors, originOfficeDescription: '' });
                 }}
-                className={`input-field ${errors.originOfficeId ? 'border-red-500' : ''}`}
-              >
-                <option value="">Seleccionar oficina...</option>
-                {offices.map((office) => (
-                  <option key={office.id} value={office.id}>
-                    {office.name} - Piso {office.floor}
-                  </option>
-                ))}
-              </select>
-              {errors.originOfficeId && <p className="text-red-500 text-sm mt-1">{errors.originOfficeId}</p>}
+                className={`input-field min-h-[96px] ${errors.originOfficeDescription ? 'border-red-500' : ''}`}
+                placeholder="Ej: Piso 3, oficina de archivo / oficina aún no registrada"
+              />
+              <p className="text-xs text-gray-500 mt-1">Escribe una descripción libre del origen. No depende del catálogo de oficinas.</p>
+              {errors.originOfficeDescription && <p className="text-red-500 text-sm mt-1">{errors.originOfficeDescription}</p>}
             </div>
           )}
 
@@ -406,7 +473,7 @@ export function Devices() {
               onClick={handleSave}
               className="flex-1 bg-blue-600 text-white font-medium py-2 rounded-lg hover:bg-blue-700 transition"
             >
-              {editingDevice ? 'Actualizar' : 'Crear'}
+              {editingDevice ? 'Actualizar' : formData.quantity > 1 ? `Crear ${formData.quantity}` : 'Crear'}
             </button>
             <button
               onClick={() => {

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { deviceService } from '../services/deviceService';
 import { deviceTypeService } from '../services/deviceTypeService';
 import { officeService } from '../services/officeService';
-import { Device, DeviceType, Office } from '../lib/types';
+import { Device, DeviceCreatePayload, DeviceType, Office, DeviceUpdatePayload } from '../lib/types';
 
 export function useDevices(initialPage = 1, limit = 10) {
   const [devices, setDevices] = useState<Device[]>([]);
@@ -46,12 +46,13 @@ export function useDevices(initialPage = 1, limit = 10) {
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / limit)), [totalCount, limit]);
 
-  const createDevice = async (data: Partial<Device>) => {
-    await deviceService.create(data);
+  const createDevice = async (data: DeviceCreatePayload) => {
+    const response = await deviceService.create(data);
     await loadData(page);
+    return response;
   };
 
-  const updateDevice = async (id: string, data: Partial<Device>) => {
+  const updateDevice = async (id: string, data: DeviceUpdatePayload) => {
     await deviceService.update(id, data);
     await loadData(page);
   };
