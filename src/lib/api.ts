@@ -1,5 +1,5 @@
 ﻿import axios from 'axios';
-import { Area, Office, DeviceType, Device, DeviceCreatePayload, DeviceCreateResponse, DeviceUpdatePayload, PaginatedDevicesResponse, ReportBatchFilter, ReportBatchResponse, ReportSummary } from './types';
+import { Area, Office, DeviceType, Device, DeviceCreatePayload, DeviceCreateResponse, DeviceUpdatePayload, PaginatedDevicesResponse, ReportBatchFilter, ReportBatchResponse, ReportSummary, Baja, BajaCreatePayload, BajaUpdatePayload, AreaReportResponse } from './types';
 
 export const apiBaseUrl = 'http://localhost:3000/api';
 
@@ -54,6 +54,12 @@ export const createDevice = async (data: DeviceCreatePayload) => (await api.post
 export const updateDevice = async (id: string, data: DeviceUpdatePayload) => (await api.patch<Device>(`/devices/${id}`, data)).data;
 export const deleteDevice = async (id: string) => (await api.delete(`/devices/${id}`)).data;
 
+// Bajas calls
+export const getBajas = async () => (await api.get<Baja[]>('/bajas')).data;
+export const createBaja = async (data: BajaCreatePayload) => (await api.post<Baja>('/bajas', data)).data;
+export const updateBaja = async (id: string, data: BajaUpdatePayload) => (await api.patch<Baja>(`/bajas/${id}`, data)).data;
+export const deleteBaja = async (id: string) => (await api.delete(`/bajas/${id}`)).data;
+
 // Device Types calls
 export const getDeviceTypes = async () => (await api.get<DeviceType[]>('/device-types')).data;
 export const updateDeviceType = async (id: string, data: Partial<DeviceType>) => (await api.patch<DeviceType>(`/device-types/${id}`, data)).data;
@@ -63,3 +69,4 @@ export const deleteDeviceType = async (id: string) => (await api.delete(`/device
 // Reports
 export const getReportSummary = async () => (await api.get<ReportSummary>('/reports/summary')).data;
 export const getReportBatch = async (reports: ReportBatchFilter[]) => (await api.post<ReportBatchResponse>('/reports/batch', { reports })).data;
+export const getAreaReports = async (areaId?: string) => (await api.get<AreaReportResponse>(`/reports/areas${areaId ? `?areaId=${areaId}` : ''}`)).data;

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   MonitorSmartphone,
+  Archive,
   Building2,
   Map,
   Tags,
@@ -22,6 +23,11 @@ const navItems = [
   path: '/devices',
   label: 'Devices',
   icon: MonitorSmartphone
+},
+{
+  path: '/bajas',
+  label: 'Bajas',
+  icon: Archive
 },
 {
   path: '/offices',

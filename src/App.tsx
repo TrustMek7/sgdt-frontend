@@ -7,10 +7,11 @@ import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Devices } from './pages/Devices';
+import { Bajas } from './pages/Bajas';
 import { Areas } from './pages/Areas';
 import { Offices } from './pages/Offices';
 import { DeviceTypes } from './pages/DeviceTypes';
-import { Reports } from './pages/Reports';
+import { AreaReports } from './pages/AreaReports';
 
 export function App() {
   return (
@@ -32,10 +33,11 @@ export function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="devices" element={<Devices />} />
+            <Route path="bajas" element={<Bajas />} />
             <Route path="areas" element={<Areas />} />
             <Route path="offices" element={<Offices />} />
             <Route path="types" element={<DeviceTypes />} />
-            <Route path="reports" element={<Reports />} />
+            <Route path="reports" element={<AreaReports />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
 
